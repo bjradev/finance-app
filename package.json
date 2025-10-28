@@ -1,0 +1,15 @@
+{
+  "name": "finance-app",
+  "private": true,
+  "workspaces": [
+    "apps/web-client",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web-client run dev",
+    "test:web": "npm --workspace apps/web-client run test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1"
+  }
+}
