@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { authService } from "../services/authService";
+import { fetchMyProfile } from "../services/profileService";
 import { useAuthStore } from "@/app/store/authStore";
 import { mapSupabaseUserToUser } from "../mappers/mapSupabaseUserToUser";
 
@@ -12,7 +13,7 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: authService.login,
 
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       if (!response.data?.user) {
         throw new Error("No user data received from authentication");
       }
@@ -29,10 +30,29 @@ export const useLogin = () => {
         throw new Error("Email not confirmed");
       }
 
+      // Mapear usuario de Supabase al tipo User del dominio
       const user = mapSupabaseUserToUser(supabaseUser);
 
-      setAuth(user, accessToken);
-      toast.success(`¡Bienvenido, ${user.name}!`);
+      try {
+        // Obtener perfil adicional del usuario
+        const profile = await fetchMyProfile(user.id);
+
+        // Actualizar user con datos del perfil
+        const userWithProfile = {
+          ...user,
+          name: profile.name,
+          defaultCurrency: profile.defaultCurrency,
+        };
+
+        setAuth(userWithProfile, accessToken, profile.defaultCurrency);
+        toast.success(`¡Bienvenido, ${userWithProfile.name}!`);
+      } catch (profileError) {
+        console.warn("Failed to fetch profile:", profileError);
+        // Continuar con login incluso si el perfil falla
+        setAuth(user, accessToken);
+        toast.success(`¡Bienvenido, ${user.name}!`);
+      }
+
       navigate("/dashboard");
     },
 

@@ -2,5 +2,11 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: string;
+  defaultCurrency?: string;
+}
+
+export interface ProfileData {
+  id: string;
+  name: string;
+  defaultCurrency: string;
 }
