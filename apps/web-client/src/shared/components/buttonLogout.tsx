@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuthStore } from "@/app/store/authStore";
+import { LogOutIcon } from "lucide-react";
+import { Spinner } from "./ui/spinner";
 
 export const ButtonLogout = () => {
   const navigate = useNavigate();
@@ -18,11 +20,16 @@ export const ButtonLogout = () => {
   return (
     <Button
       variant="destructive"
+      className="bg-[#FD4745]/90 hover:bg-[#FD4745]"
       onClick={async () => {
         logoutMutation.mutate();
       }}
     >
-      Cerrar sesión
+      {logoutMutation.isPending ? (
+        <Spinner className="w-4 h-4 animate-spin" />
+      ) : (
+        <LogOutIcon className="w-4 h-4" />
+      )}
     </Button>
   );
 };
