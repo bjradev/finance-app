@@ -35,24 +35,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 
-const data: Payment[] = [
-  {
-    id: "m5gr84i9",
-    amount: 316,
-    status: "success",
-    email: "ken99@example.com",
-  },
-];
+import { useGetTransactions } from "../hooks/useTransactions";
+import { useTransactionEditDelete } from "../hooks/useTransactions";
+import { useCategories } from "../hooks/useCategories";
+import type { Transaction } from "@/shared/types/transactions.types";
+import { formatCurrency } from "@/shared/lib/format/formatCurrency";
+import { filterTransactionsByPeriod, type PeriodType } from "../logic/summary";
 
-export type Payment = {
-  id: string;
-  amount: number;
-  status: "pending" | "processing" | "success" | "failed";
-  email: string;
-};
+import { EditTransactionDialog } from "./EditTransactionDialog";
+import { DeleteTransactionDialog } from "./DeleteTransactionDialog";
 
-export const columns: ColumnDef<Payment>[] = [
+interface TableTransactionsProps {
+  period?: PeriodType;
+}
+
+const getColumns = (
+  onEditClick: (transaction: Transaction) => void,
+  onDeleteClick: (transaction: Transaction) => void
+): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -76,66 +78,110 @@ export const columns: ColumnDef<Payment>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <div className="capitalize">{row.getValue("status")}</div>
-    ),
+    accessorKey: "category_name",
+    header: "Categoría",
+    cell: ({ row }) => {
+      const transaction = row.original;
+      return (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="text-lg">
+              {transaction.category_emoji || "💸"}
+            </AvatarFallback>
+          </Avatar>
+          <span className="font-medium">
+            {transaction.category_name || "Sin categoría"}
+          </span>
+        </div>
+      );
+    },
   },
   {
-    accessorKey: "email",
+    accessorKey: "title",
+    header: "Transacción",
+    cell: ({ row }) => {
+      const transaction = row.original;
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="font-medium">{transaction.title}</div>
+          {transaction.notes && (
+            <div className="text-sm text-muted-foreground">
+              {transaction.notes}
+            </div>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "tx_date",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          Fecha
           <ArrowUpDown />
         </Button>
       );
     },
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+    cell: ({ row }) => {
+      const tx_date = row.original.tx_date;
+      return <div className="text-sm">{tx_date}</div>;
+    },
   },
   {
-    accessorKey: "amount",
-    header: () => <div className="text-right">Amount</div>,
+    accessorKey: "amount_usd",
+    header: () => <div className="text-right">Monto</div>,
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
+      const transaction = row.original;
+      const amount = parseFloat(row.getValue("amount_usd"));
 
-      // Format the amount as a dollar amount
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
+      const currencyType = (
+        transaction.currency_code === "USD" ? "USD" : "COP"
+      ) as "USD" | "COP";
+      const formatted = formatCurrency(amount, currencyType);
 
-      return <div className="text-right font-medium">{formatted}</div>;
+      const isIncome = transaction.tx_type === "income";
+      return (
+        <div
+          className={`text-right font-medium ${
+            isIncome ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {isIncome ? "+" : "-"}
+          {formatted}
+        </div>
+      );
     },
   },
   {
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const payment = row.original;
+      const transaction = row.original;
 
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">Abrir menú</span>
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(payment.id)}
-            >
-              Copy payment ID
-            </DropdownMenuItem>
+            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEditClick(transaction)}>
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-600"
+              onClick={() => onDeleteClick(transaction)}
+            >
+              Eliminar
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -143,7 +189,7 @@ export const columns: ColumnDef<Payment>[] = [
   },
 ];
 
-export function TableTransactions() {
+export function TableTransactions({ period }: TableTransactionsProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -152,9 +198,34 @@ export function TableTransactions() {
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
+  const { data: transactions = [] } = useGetTransactions();
+  const { data: categories = [] } = useCategories();
+
+  const {
+    transactionToEdit,
+    transactionToDelete,
+    form,
+    handleEditClick,
+    handleDeleteClick,
+    handleEditSubmit,
+    handleDeleteConfirm,
+    closeEditDialog,
+    closeDeleteDialog,
+    updateMutation,
+    deleteMutation,
+  } = useTransactionEditDelete();
+
+  // Filtrar transacciones según el período
+  const filteredTransactions = React.useMemo(() => {
+    if (!period) {
+      return transactions;
+    }
+    return filterTransactionsByPeriod(transactions, period);
+  }, [transactions, period]);
+
   const table = useReactTable({
-    data,
-    columns,
+    data: filteredTransactions,
+    columns: getColumns(handleEditClick, handleDeleteClick),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -175,17 +246,17 @@ export function TableTransactions() {
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
+          placeholder="Buscar por título..."
+          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
+            table.getColumn("title")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown />
+              Columnas <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -249,10 +320,12 @@ export function TableTransactions() {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={
+                    getColumns(handleEditClick, handleDeleteClick).length
+                  }
                   className="h-24 text-center"
                 >
-                  No results.
+                  No hay transacciones.
                 </TableCell>
               </TableRow>
             )}
@@ -261,8 +334,8 @@ export function TableTransactions() {
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+          {table.getFilteredSelectedRowModel().rows.length} de{" "}
+          {table.getFilteredRowModel().rows.length} fila(s) seleccionada(s).
         </div>
         <div className="space-x-2">
           <Button
@@ -271,7 +344,7 @@ export function TableTransactions() {
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            Anterior
           </Button>
           <Button
             variant="outline"
@@ -279,10 +352,28 @@ export function TableTransactions() {
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            Siguiente
           </Button>
         </div>
       </div>
+
+      {/* Componentes de Dialogo separados */}
+      <EditTransactionDialog
+        isOpen={transactionToEdit !== null}
+        onClose={closeEditDialog}
+        onSubmit={handleEditSubmit}
+        form={form}
+        categories={categories}
+        updateMutation={updateMutation}
+      />
+
+      <DeleteTransactionDialog
+        isOpen={transactionToDelete !== null}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        transaction={transactionToDelete}
+        deleteMutation={deleteMutation}
+      />
     </div>
   );
 }

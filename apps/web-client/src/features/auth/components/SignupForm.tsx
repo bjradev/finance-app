@@ -14,25 +14,11 @@ import {
 } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { useSignup } from "../hooks/useSignup";
-import { z } from "zod";
+import { signupSchema } from "../validation/auth.schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { SignupFormData } from "../types/auth.types";
 import { Spinner } from "@/shared/components/ui/spinner";
-
-const signupSchema = z
-  .object({
-    name: z.string().min(1, { message: "El nombre y apellido es requerido" }),
-    email: z.string().email({ message: "Correo electrónico inválido" }),
-    password: z
-      .string()
-      .min(8, { message: "La contraseña debe tener al menos 8 caracteres" }),
-    passwordConfirm: z.string(),
-  })
-  .refine((data) => data.password === data.passwordConfirm, {
-    message: "Las contraseñas no coinciden",
-    path: ["passwordConfirm"],
-  });
 
 export const SignupForm = () => {
   const {

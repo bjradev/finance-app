@@ -1,13 +1,18 @@
 export interface Transaction {
-  id: string;
-  title: string;
-  amount: number;
+  id?: string;
+  user_id: string;
   category_id: string;
-  tx_date: string;
-  tx_type: "income" | "expense";
+  title: string;
+  amount_original: number;
+  currency_code: string;
   fx_rate_to_usd: number;
   amount_usd: number;
-  notes: string;
-  created_at: Date;
-  updated_at: Date;
+  tx_type: "income" | "expense";
+  tx_date: string;
+  notes?: string;
+  created_at?: Date;
+  updated_at?: Date;
+  // Datos de la categoría (poblados por JOIN)
+  category_name?: string;
+  category_emoji?: string;
 }

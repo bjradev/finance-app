@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { ArrowUpRightIcon, ArrowDownRightIcon } from "lucide-react";
+import { formatCurrency } from "@/shared/lib/format/formatCurrency";
 
 interface CardStatsProps {
   type: "income" | "expense" | "total";
@@ -8,6 +9,9 @@ interface CardStatsProps {
 }
 
 export const CardStats = ({ type, value, currency }: CardStatsProps) => {
+  const currencyType = (currency === "USD" ? "USD" : "COP") as "USD" | "COP";
+  const formattedValue = formatCurrency(value, currencyType);
+
   return (
     <>
       <Card className="flex items-center justify-between gap-4 p-4 rounded-lg bg-[#F8F8F8] shadow-none border-none">
@@ -31,10 +35,9 @@ export const CardStats = ({ type, value, currency }: CardStatsProps) => {
                   : "Egresos"}
               </h3>
               <div className="flex items-center justify-between gap-2">
-                <p className="text-2xl font-black text-foreground">{value}</p>
-                <span className="text-sm text-muted-foreground">
-                  {currency}
-                </span>
+                <p className="text-2xl font-black text-foreground">
+                  {formattedValue}
+                </p>
               </div>
             </div>
           </div>

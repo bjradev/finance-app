@@ -14,18 +14,11 @@ import {
 } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { useLogin } from "../hooks/useLogin";
-import { z } from "zod";
+import { loginSchema } from "../validation/auth.schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { LoginCredentials } from "../types/auth.types";
 import { Spinner } from "@/shared/components/ui/spinner";
-
-const loginSchema = z.object({
-  email: z.string().email({ message: "Correo electrónico inválido" }),
-  password: z
-    .string()
-    .min(8, { message: "La contraseña debe tener al menos 8 caracteres" }),
-});
 
 export const LoginForm = () => {
   const {

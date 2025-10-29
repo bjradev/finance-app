@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -11,40 +12,62 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/shared/components/ui/chart";
+import { useGetTransactions } from "../hooks/useTransactions";
+import { generateChartData, type PeriodType } from "../logic/summary";
+
+interface ChartBarInteractiveProps {
+  period?: PeriodType;
+}
 
 export const description = "A stacked bar chart with a legend";
 
-const chartData = [
-  { month: "January", income: 2000000, expense: 1000000 },
-  { month: "February", income: 3000000, expense: 2000000 },
-  { month: "March", income: 2300000, expense: 1200000 },
-  { month: "April", income: 700000, expense: 1900000 },
-  { month: "May", income: 2000000, expense: 1300000 },
-  { month: "June", income: 2100000, expense: 1400000 },
-  { month: "February", income: 3000000, expense: 2000000 },
-  { month: "March", income: 2300000, expense: 1200000 },
-  { month: "April", income: 700000, expense: 1900000 },
-  { month: "May", income: 2000000, expense: 1300000 },
-  { month: "June", income: 2100000, expense: 1400000 },
-  { month: "February", income: 3000000, expense: 2000000 },
-  { month: "March", income: 2300000, expense: 1200000 },
-  { month: "April", income: 700000, expense: 1900000 },
-  { month: "May", income: 2000000, expense: 1300000 },
-  { month: "June", income: 2100000, expense: 1400000 },
-];
-
 const chartConfig = {
   income: {
-    label: "income",
-    color: "#C9EDE1",
+    label: "Ingresos",
+    color: "#10b981",
   },
   expense: {
-    label: "expense",
-    color: "#FECCCB",
+    label: "Gastos",
+    color: "#ef4444",
   },
 } satisfies ChartConfig;
 
-export function ChartBarInteractive() {
+export function ChartBarInteractive({
+  period = "month",
+}: ChartBarInteractiveProps) {
+  const { data: transactions = [], isLoading } = useGetTransactions();
+
+  const chartData = useMemo(() => {
+    if (!transactions || transactions.length === 0) {
+      return [];
+    }
+    return generateChartData(transactions, period);
+  }, [transactions, period]);
+
+  if (isLoading) {
+    return (
+      <Card className="p-0 shadow-none border-none">
+        <CardContent>
+          <div className="flex items-center justify-center h-96 text-muted-foreground">
+            Cargando gráfico...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <Card className="p-0 shadow-none border-none">
+        <CardContent>
+          <div className="flex items-center justify-center h-96 text-muted-foreground">
+            No hay datos de transacciones para mostrar
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-0 shadow-none border-none">
       <CardContent>
@@ -55,11 +78,15 @@ export function ChartBarInteractive() {
           <BarChart accessibilityLayer data={chartData}>
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="label"
               tickLine={false}
               tickMargin={0.2}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) =>
+                typeof value === "string"
+                  ? value.split(" ")[0].slice(0, 3)
+                  : value
+              }
             />
             <ChartTooltip content={<ChartTooltipContent hideLabel />} />
             <ChartLegend content={<ChartLegendContent />} />
