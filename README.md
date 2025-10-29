@@ -9,6 +9,8 @@ GitHub: [github.com/carlospujolima](https://github.com/carlospujolima)
 
 **Fecha de entrega:** miércoles 29 de octubre de 2025 – 12:00 PM (GMT-5)
 
+**Demo:** [https://financial.bjra.dev/](https://financial.bjra.dev/)
+
 ---
 
 ## Descripción general
