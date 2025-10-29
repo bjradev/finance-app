@@ -92,7 +92,7 @@ export const LoginForm = () => {
                   )}
                 </Button>
                 <FieldDescription className="text-center">
-                  No tienes una cuenta? <a href="/signup">Regístrate</a>
+                  ¿No tienes una cuenta? <a href="/signup">Regístrate</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>

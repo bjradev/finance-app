@@ -17,6 +17,7 @@ import { generateChartData, type PeriodType } from "../logic/summary";
 
 interface ChartBarInteractiveProps {
   period?: PeriodType;
+  displayCurrency?: "USD" | "COP";
 }
 
 export const description = "A stacked bar chart with a legend";
@@ -34,6 +35,7 @@ const chartConfig = {
 
 export function ChartBarInteractive({
   period = "month",
+  displayCurrency = "COP",
 }: ChartBarInteractiveProps) {
   const { data: transactions = [], isLoading } = useGetTransactions();
 
@@ -41,8 +43,9 @@ export function ChartBarInteractive({
     if (!transactions || transactions.length === 0) {
       return [];
     }
-    return generateChartData(transactions, period);
-  }, [transactions, period]);
+    // La lógica está en summary.ts, aquí solo usamos generateChartData
+    return generateChartData(transactions, period, displayCurrency);
+  }, [transactions, period, displayCurrency]);
 
   if (isLoading) {
     return (
@@ -80,28 +83,13 @@ export function ChartBarInteractive({
             <XAxis
               dataKey="label"
               tickLine={false}
-              tickMargin={0.2}
+              tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) =>
-                typeof value === "string"
-                  ? value.split(" ")[0].slice(0, 3)
-                  : value
-              }
             />
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+            <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar
-              dataKey="income"
-              stackId="a"
-              fill="var(--color-income)"
-              radius={[0, 0, 4, 4]}
-            />
-            <Bar
-              dataKey="expense"
-              stackId="a"
-              fill="var(--color-expense)"
-              radius={[4, 4, 0, 0]}
-            />
+            <Bar dataKey="income" stackId="a" fill="var(--color-income)" />
+            <Bar dataKey="expense" stackId="a" fill="var(--color-expense)" />
           </BarChart>
         </ChartContainer>
       </CardContent>

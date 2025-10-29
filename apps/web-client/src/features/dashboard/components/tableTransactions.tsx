@@ -13,13 +13,12 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -39,21 +38,25 @@ import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 
 import { useGetTransactions } from "../hooks/useTransactions";
 import { useTransactionEditDelete } from "../hooks/useTransactions";
+import { useTransactionFilters } from "../hooks/useTransactions";
 import { useCategories } from "../hooks/useCategories";
 import type { Transaction } from "@/shared/types/transactions.types";
 import { formatCurrency } from "@/shared/lib/format/formatCurrency";
-import { filterTransactionsByPeriod, type PeriodType } from "../logic/summary";
+import { convertForDisplay } from "../logic/currency";
+import { type PeriodType } from "../logic/summary";
 
 import { EditTransactionDialog } from "./EditTransactionDialog";
 import { DeleteTransactionDialog } from "./DeleteTransactionDialog";
 
 interface TableTransactionsProps {
   period?: PeriodType;
+  displayCurrency?: "USD" | "COP";
 }
 
 const getColumns = (
   onEditClick: (transaction: Transaction) => void,
-  onDeleteClick: (transaction: Transaction) => void
+  onDeleteClick: (transaction: Transaction) => void,
+  displayCurrency: "USD" | "COP" = "COP"
 ): ColumnDef<Transaction>[] => [
   {
     id: "select",
@@ -113,6 +116,23 @@ const getColumns = (
       );
     },
   },
+
+  {
+    accessorKey: "currency_code",
+    header: "Moneda",
+    cell: ({ row }) => {
+      const currency_code = row.original.currency_code;
+      return (
+        <div className="text-sm">
+          {currency_code === "COP"
+            ? "🇨🇴 COP"
+            : currency_code === "USD"
+            ? "🇺🇸 USD"
+            : "💸"}
+        </div>
+      );
+    },
+  },
   {
     accessorKey: "tx_date",
     header: ({ column }) => {
@@ -133,15 +153,18 @@ const getColumns = (
   },
   {
     accessorKey: "amount_usd",
-    header: () => <div className="text-right">Monto</div>,
+    header: () => <div className="text-right">Monto ({displayCurrency})</div>,
     cell: ({ row }) => {
       const transaction = row.original;
-      const amount = parseFloat(row.getValue("amount_usd"));
 
-      const currencyType = (
-        transaction.currency_code === "USD" ? "USD" : "COP"
-      ) as "USD" | "COP";
-      const formatted = formatCurrency(amount, currencyType);
+      // Usar convertForDisplay para evitar pérdida de precisión
+      const displayAmount = convertForDisplay(
+        transaction.amount_original,
+        transaction.currency_code,
+        displayCurrency
+      );
+
+      const formatted = formatCurrency(displayAmount, displayCurrency);
 
       const isIncome = transaction.tx_type === "income";
       return (
@@ -189,7 +212,10 @@ const getColumns = (
   },
 ];
 
-export function TableTransactions({ period }: TableTransactionsProps) {
+export function TableTransactions({
+  period,
+  displayCurrency = "COP",
+}: TableTransactionsProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -215,17 +241,24 @@ export function TableTransactions({ period }: TableTransactionsProps) {
     deleteMutation,
   } = useTransactionEditDelete();
 
-  // Filtrar transacciones según el período
+  const {
+    typeFilter,
+    setTypeFilter,
+    categoryFilter,
+    setCategoryFilter,
+    applyTransactionFilters,
+    resetFilters,
+    hasActiveFilters,
+  } = useTransactionFilters();
+
+  // Filtrar transacciones con período + tipo + categoría
   const filteredTransactions = React.useMemo(() => {
-    if (!period) {
-      return transactions;
-    }
-    return filterTransactionsByPeriod(transactions, period);
-  }, [transactions, period]);
+    return applyTransactionFilters(transactions, period);
+  }, [transactions, period, applyTransactionFilters]);
 
   const table = useReactTable({
     data: filteredTransactions,
-    columns: getColumns(handleEditClick, handleDeleteClick),
+    columns: getColumns(handleEditClick, handleDeleteClick, displayCurrency),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -244,7 +277,7 @@ export function TableTransactions({ period }: TableTransactionsProps) {
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex items-center gap-2 py-4 flex-wrap">
         <Input
           placeholder="Buscar por título..."
           value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
@@ -253,32 +286,83 @@ export function TableTransactions({ period }: TableTransactionsProps) {
           }
           className="max-w-sm"
         />
+
+        {/* Filtro por tipo */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columnas <ChevronDown />
+            <Button
+              variant={typeFilter ? "default" : "outline"}
+              className="gap-2"
+            >
+              {typeFilter === "income"
+                ? "💰 Ingresos"
+                : typeFilter === "expense"
+                ? "💸 Egresos"
+                : "📊 Tipo"}
+              {typeFilter && <span className="ml-1 text-xs">×</span>}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              onClick={() =>
+                setTypeFilter(typeFilter === "income" ? undefined : "income")
+              }
+            >
+              💰 Ingresos {typeFilter === "income" && "✓"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                setTypeFilter(typeFilter === "expense" ? undefined : "expense")
+              }
+            >
+              💸 Egresos {typeFilter === "expense" && "✓"}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Filtro por categoría */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={categoryFilter ? "default" : "outline"}
+              className="gap-2"
+            >
+              🏷️ Categoría{" "}
+              {categoryFilter && <span className="ml-1 text-xs">×</span>}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setCategoryFilter(undefined)}>
+              Todas las categorías
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {categories.map((category) => (
+              <DropdownMenuItem
+                key={category.id}
+                onClick={() =>
+                  setCategoryFilter(
+                    categoryFilter === category.id ? undefined : category.id
+                  )
+                }
+              >
+                {category.emoji} {category.name}{" "}
+                {categoryFilter === category.id && "✓"}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Botón para limpiar filtros */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="text-red-600 hover:text-red-700"
+          >
+            Limpiar filtros
+          </Button>
+        )}
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -321,7 +405,11 @@ export function TableTransactions({ period }: TableTransactionsProps) {
               <TableRow>
                 <TableCell
                   colSpan={
-                    getColumns(handleEditClick, handleDeleteClick).length
+                    getColumns(
+                      handleEditClick,
+                      handleDeleteClick,
+                      displayCurrency
+                    ).length
                   }
                   className="h-24 text-center"
                 >

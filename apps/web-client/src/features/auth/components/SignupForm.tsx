@@ -132,7 +132,7 @@ export const SignupForm = () => {
                   )}
                 </Button>
                 <FieldDescription className="text-center">
-                  Ya tienes una cuenta? <a href="/">Inicia sesión</a>
+                  ¿Ya tienes una cuenta? <a href="/">Inicia sesión</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>

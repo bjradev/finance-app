@@ -22,13 +22,14 @@ import type { SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAddTransaction } from "../hooks/useTransactions";
 import { useAuthStore } from "@/app/store/authStore";
-import type { Transaction } from "@/shared/types/transactions.types";
+import type { TransactionInput } from "@/shared/types/transactions.types";
 import { useCategories } from "../hooks/useCategories";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
   transactionSchema,
   type TransactionFormData,
 } from "../validation/transaction.schemas";
+import { calculateCurrencyConversion } from "../logic/currency";
 
 export const NewTransactionForm = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,27 +60,38 @@ export const NewTransactionForm = () => {
   const addTransactionMutation = useAddTransaction();
   const selectedType = watch("tx_type");
 
-  const onSubmit: SubmitHandler<TransactionFormData> = (data) => {
+  const onSubmit: SubmitHandler<TransactionFormData> = async (data) => {
     if (!user) {
       console.error("User not authenticated");
       return;
     }
 
-    const transactionData: Transaction = {
-      user_id: user.id,
-      title: data.title,
-      tx_type: data.tx_type,
-      amount_original: data.amount_original,
-      category_id: data.category_id,
-      currency_code: data.currency_code,
-      fx_rate_to_usd: 1.0, // TODO: Obtener del servicio de tasas de cambio
-      amount_usd: data.amount_original, // TODO: Calcular según fx_rate
-      tx_date: data.tx_date,
-      notes: data.notes,
-    };
-    addTransactionMutation.mutate(transactionData);
-    setIsOpen(false);
-    reset();
+    try {
+      // Calcular monto en USD y tasa de cambio usando la lógica centralizada
+      const { amount_usd, fx_rate_to_usd } = await calculateCurrencyConversion(
+        data.amount_original,
+        data.currency_code
+      );
+
+      const transactionData: TransactionInput = {
+        user_id: user.id,
+        title: data.title,
+        tx_type: data.tx_type,
+        amount_original: data.amount_original,
+        category_id: data.category_id,
+        currency_code: data.currency_code,
+        fx_rate_to_usd: fx_rate_to_usd,
+        amount_usd: amount_usd,
+        tx_date: data.tx_date,
+        notes: data.notes || undefined,
+      };
+
+      addTransactionMutation.mutate(transactionData);
+      setIsOpen(false);
+      reset();
+    } catch (error) {
+      console.error("Error al crear transacción:", error);
+    }
   };
 
   return (

@@ -1,4 +1,6 @@
 import type { Transaction } from "@/shared/types/transactions.types";
+import { exchangeRateService } from "../services/exchangeRateService";
+import { convertForDisplay } from "./currency";
 
 export type PeriodType = "week" | "month" | "year";
 
@@ -106,11 +108,12 @@ function getPeriodLabel(period: PeriodType, date: Date = new Date()): string {
 }
 
 /**
- * Filtra transacciones por período y calcula estadísticas
+ * Filtra transacciones por período y calcula estadísticas en la moneda de visualización
  */
 export function calculateStats(
   transactions: Transaction[],
-  period: PeriodType = "month"
+  period: PeriodType = "month",
+  displayCurrency: string = "USD"
 ): StatsResult {
   const { start, end } = getDateRange(period);
   const startDateKey = start.toISOString().split("T")[0]; // YYYY-MM-DD
@@ -132,7 +135,12 @@ export function calculateStats(
 
     // Filtrar solo transacciones dentro del rango de fechas
     if (dateKey >= startDateKey && dateKey <= endDateKey) {
-      const amount = Math.round(transaction.amount_usd);
+      // Convertir usando amount_original para precisión
+      const amount = convertForDisplay(
+        transaction.amount_original,
+        transaction.currency_code,
+        displayCurrency
+      );
 
       if (transaction.tx_type === "income") {
         income += amount;
@@ -146,9 +154,9 @@ export function calculateStats(
   const total = income - expense;
 
   return {
-    income,
-    expense,
-    total,
+    income: Math.round(income * 100) / 100,
+    expense: Math.round(expense * 100) / 100,
+    total: Math.round(total * 100) / 100,
     periodLabel: getPeriodLabel(period),
   };
 }
@@ -183,6 +191,59 @@ export function filterTransactionsByPeriod(
 }
 
 /**
+ * Filtra transacciones por tipo (income/expense)
+ */
+export function filterByType(
+  transactions: Transaction[],
+  type?: "income" | "expense"
+): Transaction[] {
+  if (!type) return transactions;
+  return transactions.filter((transaction) => transaction.tx_type === type);
+}
+
+/**
+ * Filtra transacciones por categoría
+ */
+export function filterByCategory(
+  transactions: Transaction[],
+  categoryId?: string
+): Transaction[] {
+  if (!categoryId) return transactions;
+  return transactions.filter((transaction) => transaction.category_id === categoryId);
+}
+
+/**
+ * Aplica múltiples filtros a las transacciones
+ */
+export function applyFilters(
+  transactions: Transaction[],
+  filters: {
+    period?: PeriodType;
+    type?: "income" | "expense";
+    categoryId?: string;
+  }
+): Transaction[] {
+  let filtered = transactions;
+
+  // Filtrar por período
+  if (filters.period) {
+    filtered = filterTransactionsByPeriod(filtered, filters.period);
+  }
+
+  // Filtrar por tipo
+  if (filters.type) {
+    filtered = filterByType(filtered, filters.type);
+  }
+
+  // Filtrar por categoría
+  if (filters.categoryId) {
+    filtered = filterByCategory(filtered, filters.categoryId);
+  }
+
+  return filtered;
+}
+
+/**
  * Interfaz para datos del gráfico
  */
 export interface ChartData {
@@ -194,7 +255,10 @@ export interface ChartData {
 /**
  * Genera todos los días de una semana con sus datos de transacciones
  */
-function aggregateByWeek(transactions: Transaction[]): ChartData[] {
+function aggregateByWeek(
+  transactions: Transaction[],
+  displayCurrency: string = "USD"
+): ChartData[] {
   const now = new Date();
   const { start } = getWeekRange(now);
 
@@ -217,7 +281,11 @@ function aggregateByWeek(transactions: Transaction[]): ChartData[] {
 
     if (weekData.has(dateKey)) {
       const dayRecord = weekData.get(dateKey)!;
-      const amount = Math.round(transaction.amount_usd);
+      const amount = convertForDisplay(
+        transaction.amount_original,
+        transaction.currency_code,
+        displayCurrency
+      );
 
       if (transaction.tx_type === "income") {
         dayRecord.income += amount;
@@ -234,8 +302,8 @@ function aggregateByWeek(transactions: Transaction[]): ChartData[] {
         weekday: "short",
         day: "numeric",
       }),
-      income: data.income,
-      expense: data.expense,
+      income: Math.round(data.income * 100) / 100,
+      expense: Math.round(data.expense * 100) / 100,
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "es-ES"));
 }
@@ -243,7 +311,10 @@ function aggregateByWeek(transactions: Transaction[]): ChartData[] {
 /**
  * Genera todos los meses de un año con sus datos de transacciones
  */
-function aggregateByYear(transactions: Transaction[]): ChartData[] {
+function aggregateByYear(
+  transactions: Transaction[],
+  displayCurrency: string = "USD"
+): ChartData[] {
   const monthData: Map<string, { income: number; expense: number }> = new Map();
   const months = [
     "Ene",
@@ -273,7 +344,11 @@ function aggregateByYear(transactions: Transaction[]): ChartData[] {
 
     if (monthData.has(monthLabel)) {
       const monthRecord = monthData.get(monthLabel)!;
-      const amount = Math.round(transaction.amount_usd);
+      const amount = convertForDisplay(
+        transaction.amount_original,
+        transaction.currency_code,
+        displayCurrency
+      );
 
       if (transaction.tx_type === "income") {
         monthRecord.income += amount;
@@ -286,14 +361,18 @@ function aggregateByYear(transactions: Transaction[]): ChartData[] {
   // Convertir a array con etiquetas
   return Array.from(monthData.entries()).map(([label, data]) => ({
     label,
-    ...data,
+    income: Math.round(data.income * 100) / 100,
+    expense: Math.round(data.expense * 100) / 100,
   }));
 }
 
 /**
- * Genera todos los meses del mes actual con sus datos de transacciones
+ * Genera todos los días del mes actual con sus datos de transacciones
  */
-function aggregateByMonth(transactions: Transaction[]): ChartData[] {
+function aggregateByMonth(
+  transactions: Transaction[],
+  displayCurrency: string = "USD"
+): ChartData[] {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -317,7 +396,11 @@ function aggregateByMonth(transactions: Transaction[]): ChartData[] {
 
     if (dayData.has(dateKey)) {
       const dayRecord = dayData.get(dateKey)!;
-      const amount = Math.round(transaction.amount_usd);
+      const amount = convertForDisplay(
+        transaction.amount_original,
+        transaction.currency_code,
+        displayCurrency
+      );
 
       if (transaction.tx_type === "income") {
         dayRecord.income += amount;
@@ -331,8 +414,8 @@ function aggregateByMonth(transactions: Transaction[]): ChartData[] {
   return Array.from(dayData.entries())
     .map(([, data]) => ({
       label: `${data.day}`,
-      income: data.income,
-      expense: data.expense,
+      income: Math.round(data.income * 100) / 100,
+      expense: Math.round(data.expense * 100) / 100,
     }))
     .sort((a, b) => parseInt(a.label) - parseInt(b.label));
 }
@@ -342,18 +425,42 @@ function aggregateByMonth(transactions: Transaction[]): ChartData[] {
  */
 export function generateChartData(
   transactions: Transaction[],
-  period: PeriodType = "month"
+  period: PeriodType = "month",
+  displayCurrency: string = "USD"
 ): ChartData[] {
   const filteredTransactions = filterTransactionsByPeriod(transactions, period);
 
   switch (period) {
     case "week":
-      return aggregateByWeek(filteredTransactions);
+      return aggregateByWeek(filteredTransactions, displayCurrency);
     case "month":
-      return aggregateByMonth(filteredTransactions);
+      return aggregateByMonth(filteredTransactions, displayCurrency);
     case "year":
-      return aggregateByYear(filteredTransactions);
+      return aggregateByYear(filteredTransactions, displayCurrency);
     default:
-      return aggregateByMonth(filteredTransactions);
+      return aggregateByMonth(filteredTransactions, displayCurrency);
+  }
+}
+
+/**
+ * Calcula el monto en USD basado en la moneda original y tasa de cambio
+ * @param amountOriginal - Monto en la moneda original
+ * @param currency - Moneda de origen (USD o COP)
+ * @returns Promise con amountUSD y fxRate
+ */
+export async function calculateAmountUSD(
+  amountOriginal: number,
+  currency: "USD" | "COP"
+): Promise<{ amountUSD: number; fxRate: number }> {
+  try {
+    const result = await exchangeRateService.convertToUSD(
+      amountOriginal,
+      currency
+    );
+    return result;
+  } catch (error) {
+    console.error("Error calculating amount in USD:", error);
+    // Fallback: si falla, asumir 1:1
+    return { amountUSD: amountOriginal, fxRate: 1.0 };
   }
 }

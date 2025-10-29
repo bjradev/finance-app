@@ -5,11 +5,11 @@ import { formatCurrency } from "@/shared/lib/format/formatCurrency";
 interface CardStatsProps {
   type: "income" | "expense" | "total";
   value: number;
-  currency: string;
+  displayCurrency: string;
 }
 
-export const CardStats = ({ type, value, currency }: CardStatsProps) => {
-  const currencyType = (currency === "USD" ? "USD" : "COP") as "USD" | "COP";
+export const CardStats = ({ type, value, displayCurrency }: CardStatsProps) => {
+  const currencyType = (displayCurrency === "USD" ? "USD" : "COP") as "USD" | "COP";
   const formattedValue = formatCurrency(value, currencyType);
 
   return (
