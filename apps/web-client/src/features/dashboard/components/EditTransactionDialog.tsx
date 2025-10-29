@@ -34,7 +34,12 @@ interface EditTransactionDialogProps {
   form: UseFormReturn<TransactionFormData>;
   categories: Category[];
   categoriesError?: Error | null;
-  updateMutation: UseMutationResult<Transaction, Error, string>;
+  updateMutation: UseMutationResult<
+    Transaction | null,
+    Error,
+    Transaction,
+    unknown
+  >;
 }
 
 export function EditTransactionDialog({

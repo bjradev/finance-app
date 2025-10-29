@@ -3,7 +3,7 @@ import { supabaseClient } from "@/shared/lib/supabaseClient";
 import type { Transaction } from "@/shared/types/transactions.types";
 
 export const transactionServices = {
-  addTransaction: async (transaction: Transaction) => {
+  addTransaction: async (transaction: Transaction): Promise<Transaction | null> => {
     const { data, error } = await supabaseClient
       .from("transactions")
       .insert(transaction);
@@ -30,7 +30,7 @@ export const transactionServices = {
     })) as Transaction[];
   },
 
-  updateTransaction: async (transaction: Transaction) => {
+  updateTransaction: async (transaction: Transaction): Promise<Transaction | null> => {
     // Extraer solo los campos que existen en la tabla transactions
     // Excluir propiedades derivadas del JOIN (category_name, category_emoji)
     const updateData = {
@@ -52,15 +52,15 @@ export const transactionServices = {
       .update(updateData)
       .eq("id", transaction.id);
     if (error) throw error;
-    return data;
+    return data as Transaction | null;
   },
 
-  deleteTransaction: async (id: string) => {
+  deleteTransaction: async (id: string): Promise<Transaction | null> => {
     const { data, error } = await supabaseClient
       .from("transactions")
       .delete()
       .eq("id", id);
     if (error) throw error;
-    return data;
+    return data as Transaction | null;
   },
 };

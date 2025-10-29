@@ -10,14 +10,14 @@ import {
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
 import type { Transaction } from "@/shared/types/transactions.types";
-import { UseMutationResult } from "@tanstack/react-query";
+import type { UseMutationResult } from "@tanstack/react-query";
 
 interface DeleteTransactionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   transaction: Transaction | null;
-  deleteMutation: UseMutationResult<any, Error, string, unknown>;
+  deleteMutation: UseMutationResult<Transaction | null, Error, string, unknown>;
 }
 
 export function DeleteTransactionDialog({
@@ -33,8 +33,8 @@ export function DeleteTransactionDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>¿Eliminar transacción?</AlertDialogTitle>
           <AlertDialogDescription>
-            Se eliminará "{transaction?.title}" de forma permanente. Esta
-            acción no se puede deshacer.
+            Se eliminará "{transaction?.title}" de forma permanente. Esta acción
+            no se puede deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="flex justify-end gap-2">

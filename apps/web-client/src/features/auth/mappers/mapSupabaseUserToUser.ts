@@ -11,6 +11,5 @@ export const mapSupabaseUserToUser = (
     id: supabaseUser?.id ?? "",
     email: supabaseUser?.email ?? "",
     name: metadata.name ?? supabaseUser?.email?.split("@")[0] ?? "",
-    role: metadata.role ?? "user",
   };
 };
