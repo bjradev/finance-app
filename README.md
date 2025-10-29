@@ -1,6 +1,7 @@
 ![Screenshot 2025-10-29 at 12 54 40 AM](https://github.com/user-attachments/assets/661b50de-63f9-4e38-b695-763db98ef5dc)
 
 # Finance Tracker App - Bryant Reyes
+
 > Aplicación de control financiero personal con ingresos, gastos, conversión multi-moneda y analítica mensual.
 
 **Revisor técnico asociado a esta prueba:**
@@ -14,16 +15,17 @@ GitHub: [github.com/carlospujolima](https://github.com/carlospujolima)
 
 Esta app permite a un usuario:
 
-* Registrar transacciones de tipo **ingreso** o **gasto**.
-* Guardar cada transacción en una moneda específica (USD, COP, etc.).
-* Ver todo convertido a una **moneda de visualización** seleccionada.
-* Ver métricas del mes actual:
+- Registrar transacciones de tipo **ingreso** o **gasto**.
+- Guardar cada transacción en una moneda específica (USD, COP, etc.).
+- Ver todo convertido a una **moneda de visualización** seleccionada.
+- Ver métricas del mes actual:
 
-  * **Total disponible**
-  * **Ingresos del mes**
-  * **Egresos del mes**
-* Visualizar un gráfico diario de ingresos vs egresos.
-* Filtrar movimientos por titulo, tipo, categoría y fecha.
+  - **Total disponible**
+  - **Ingresos del mes**
+  - **Egresos del mes**
+
+- Visualizar un gráfico diario de ingresos vs egresos.
+- Filtrar movimientos por titulo, tipo, categoría y fecha.
 
 ---
 
@@ -32,7 +34,7 @@ Esta app permite a un usuario:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone [https://github.com/bjradev/finance-tracker.git](https://github.com/bjradev/finance-app.git)
+git clone https://github.com/bjradev/finance-tracker.git
 cd finance-tracker
 ```
 
@@ -115,3 +117,12 @@ apps/web-client/
 ```
 
 Usé arquitectura feature-based porque agrupa lógica de negocio, vista, servicios y estado por funcionalidad (dashboard, auth, etc.), en lugar de mezclar todo globalmente. Eso hace el código más escalable, más testeable y más fácil de portar a otras plataformas (ej. mobile) sin reescribir la lógica financiera.
+
+---
+
+## 📄 Licencia
+
+Este proyecto se publica bajo la licencia MIT.
+
+Copyright (c) 2025 Bryant Reyes
+Consulta el archivo LICENSE para más detalles.

@@ -7,7 +7,9 @@
   ],
   "scripts": {
     "dev:web": "npm --workspace apps/web-client run dev",
-    "test:web": "npm --workspace apps/web-client run test"
+    "test:web": "npm --workspace apps/web-client run test",
+    "build:web" : "npm --workspace apps/web-client run build",
+    "preview:web" : "npm --workspace apps/web-client run preview"
   },
   "devDependencies": {
     "@types/node": "^24.9.1"
