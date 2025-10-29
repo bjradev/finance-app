@@ -45,6 +45,44 @@ export default defineConfig({
   ],
   build: {
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Librerías de UI y estado
+          "vendor-ui": [
+            "@radix-ui/react-alert-dialog",
+            "@radix-ui/react-avatar",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-label",
+            "@radix-ui/react-select",
+            "@radix-ui/react-separator",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-tabs",
+          ],
+          // Librerías de gráficos (Recharts es pesada)
+          "vendor-charts": ["recharts"],
+          // Utilidades y validación
+          "vendor-utils": [
+            "zod",
+            "@hookform/resolvers",
+            "class-variance-authority",
+            "clsx",
+            "tailwind-merge",
+          ],
+          // Fecha y tiempo
+          "vendor-date": ["date-fns", "react-day-picker"],
+          // Backend y datos
+          "vendor-backend": ["@supabase/supabase-js", "@tanstack/react-query"],
+          // Temas y notificaciones
+          "vendor-misc": ["next-themes", "sonner", "lucide-react"],
+          // React core
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+        },
+      },
+    },
   },
   test: {
     environment: "jsdom",
