@@ -9,6 +9,8 @@ export interface TransactionCategory {
 /**
  * Datos crudos retornados por Supabase (estructura directa de la BD con relación anidada)
  * Este tipo refleja exactamente lo que Supabase retorna
+ *
+ * IMPORTANTE: tx_date es DATE en la BD, Supabase lo serializa como string ISO "YYYY-MM-DD"
  */
 export interface SupabaseTransactionRaw {
   id: string;
@@ -20,7 +22,7 @@ export interface SupabaseTransactionRaw {
   fx_rate_to_usd: number;
   amount_usd: number;
   tx_type: "income" | "expense";
-  tx_date: string;
+  tx_date: string; // YYYY-MM-DD (DATE de Supabase serializado como string ISO)
   notes?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -31,6 +33,10 @@ export interface SupabaseTransactionRaw {
 /**
  * Transacción de presentación (aplanada, con todos los campos resueltos)
  * Este es el tipo que se usa en toda la aplicación
+ *
+ * IMPORTANTE: tx_date es SIEMPRE string ISO "YYYY-MM-DD" (viene de Supabase como DATE)
+ * La lógica en summary.ts soporta también Date objects para flexibilidad interna,
+ * pero desde la BD siempre llega como string.
  */
 export interface Transaction
   extends Omit<SupabaseTransactionRaw, "categories"> {
@@ -41,6 +47,8 @@ export interface Transaction
 
 /**
  * Datos de transacción para crear/editar (sin campos computed)
+ *
+ * IMPORTANTE: tx_date debe ser string ISO "YYYY-MM-DD" para consistencia con la BD
  */
 export interface TransactionInput {
   user_id: string;
@@ -51,7 +59,7 @@ export interface TransactionInput {
   fx_rate_to_usd: number;
   amount_usd: number;
   tx_type: "income" | "expense";
-  tx_date: string;
+  tx_date: string; // YYYY-MM-DD
   notes?: string;
 }
 
